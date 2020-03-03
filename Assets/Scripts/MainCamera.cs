@@ -16,7 +16,7 @@ public class MainCamera : MonoBehaviour
     void Start()
     {
         Vector3 startPosition = masterObject.transform.position;
-        startPosition.x -= 30;
+        startPosition.x -= 5;
         transform.position = startPosition;
         
     }
@@ -24,8 +24,11 @@ public class MainCamera : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.RotateAround(masterObject.transform.localPosition, Vector3.left, 30 * Input.GetAxis("Mouse X"));
+        transform.LookAt(masterObject.transform);
+        transform.RotateAround(masterObject.transform.position, new Vector3 (0f,1f,0f), 5 * Input.GetAxis("Mouse X"));
+        transform.RotateAround(masterObject.transform.position, new Vector3(1f, 0f, 0f), 5 * Input.GetAxis("Mouse Y"));
         //transform.RotateAround(masterObject.transform.localPosition, Vector3.up, 30 * Input.GetAxis("Mouse Y"));
-        
+        //transform.Rotate(30 * Input.GetAxis("Mouse X") * Time.deltaTime, 0, 0);
+        //transform.Rotate(0, 30 * Input.GetAxis("Mouse Y")* Time.deltaTime, 0);
     }
 }
