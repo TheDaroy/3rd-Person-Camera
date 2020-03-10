@@ -4,31 +4,77 @@ using UnityEngine;
 
 public class MainCamera : MonoBehaviour
 {
-    [SerializeField] GameObject masterObject;
-    private Camera mainCamera;
+    public Transform target;
 
-    private void Awake()
-    {
-        mainCamera = FindObjectOfType<Camera>();       
-        if (masterObject) { this.transform.SetParent(masterObject.transform);}
-        else { Debug.LogError(this + " No MasterObject Found"); }
-    }
+    [SerializeField] float rotationSpeed = 5.0f;
+    [SerializeField] float scrollSpeed = 1.0f;
+
+    [SerializeField] float maxScrollDistance = -10.0f;
+    [SerializeField] float minScrollDistance = 0.0f;
+
+    float mouseX;
+    float mouseY;
+    float scroll;
+   
     void Start()
     {
-        Vector3 startPosition = masterObject.transform.position;
-        startPosition.x -= 5;
-        transform.position = startPosition;
+        scroll = transform.localPosition.z;
+        mouseX = target.rotation.eulerAngles.y;
+        mouseY = target.rotation.eulerAngles.x;
+
+        if (maxScrollDistance > 0) { maxScrollDistance *= -1; }
         
     }
-
-    // Update is called once per frame
+    
     void Update()
     {
-        transform.LookAt(masterObject.transform);
-        transform.RotateAround(masterObject.transform.position, new Vector3 (0f,1f,0f), 5 * Input.GetAxis("Mouse X"));
-        transform.RotateAround(masterObject.transform.position, new Vector3(1f, 0f, 0f), 5 * Input.GetAxis("Mouse Y"));
-        //transform.RotateAround(masterObject.transform.localPosition, Vector3.up, 30 * Input.GetAxis("Mouse Y"));
-        //transform.Rotate(30 * Input.GetAxis("Mouse X") * Time.deltaTime, 0, 0);
-        //transform.Rotate(0, 30 * Input.GetAxis("Mouse Y")* Time.deltaTime, 0);
+        RotationInput();
+        ScrollInput();
+        CapsuleCast();
+    }
+
+    void RotationInput()
+    {
+        mouseX += Input.GetAxis("Mouse X") * rotationSpeed;
+        mouseY -= Input.GetAxis("Mouse Y") * rotationSpeed;
+       
+
+        transform.LookAt(target);
+        Rotate(mouseY, mouseX); 
+    }
+    void Rotate (float yAxis, float xAxis)
+    {
+        target.rotation = Quaternion.Euler(yAxis, xAxis, 0);
+    }
+
+    void ScrollInput()
+    {
+        scroll += Input.mouseScrollDelta.y * scrollSpeed;          
+        scroll = Mathf.Clamp(scroll, maxScrollDistance, minScrollDistance);
+
+        Scroll(scroll);
+    }
+
+    void Scroll(float amountToScroll)
+    {
+        transform.localPosition = new Vector3(0, 0, amountToScroll);
+    }
+
+    void ScrollToPosition(float zScrollPosition)
+    {
+        transform.localPosition = new Vector3(0, 0, zScrollPosition);
+        scroll = zScrollPosition;
+    }
+    void CapsuleCast()
+    {
+        Debug.DrawLine(transform.position, target.position);
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position,target.position, out hit))
+        {
+            Debug.DrawLine(transform.position, target.position);
+            Debug.Log(hit.transform);
+            ScrollToPosition(hit.transform.position.z);
+        }
+
     }
 }
