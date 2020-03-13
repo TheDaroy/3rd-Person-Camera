@@ -5,16 +5,27 @@ using UnityEngine;
 public class MainCamera : MonoBehaviour
 {
     public Transform target;
-
-    [SerializeField] float rotationSpeed = 5.0f;
+    [Header("Scroll Settings")]  
     [SerializeField] float scrollSpeed = 1.0f;
-
     [SerializeField] float maxScrollDistance = -10.0f;
     [SerializeField] float minScrollDistance = 0.0f;
 
+
+    [Header("Rotation Settings")]
+    [SerializeField] float rotationSpeed = 5.0f;
+    [SerializeField] float cameraXRotationMax = 0.0f;
+    [SerializeField] float cameraXRotationMin = 0.0f;
+    [SerializeField] float cameraYRotationMax = 0.0f;
+    [SerializeField] float cameraYRotationMin = 0.0f;
+
+    [Header("Arrays")]
+    public string[] tagToNotRenderOnCollision;
+    public string[] tagsYouCantCollideWith;
     float mouseX;
     float mouseY;
     float scroll;
+
+    bool moveOutOfCollision = false;
    
     void Start()
     {
@@ -22,59 +33,133 @@ public class MainCamera : MonoBehaviour
         mouseX = target.rotation.eulerAngles.y;
         mouseY = target.rotation.eulerAngles.x;
 
-        if (maxScrollDistance > 0) { maxScrollDistance *= -1; }
-        
+        if (maxScrollDistance > 0) { maxScrollDistance *= -1; }  
     }
     
     void Update()
     {
         RotationInput();
         ScrollInput();
-        CapsuleCast();
+        SphereCast();
+
+        if (moveOutOfCollision)
+        {
+            Scroll(0.05f);
+        }
     }
 
     void RotationInput()
     {
-        mouseX += Input.GetAxis("Mouse X") * rotationSpeed;
-        mouseY -= Input.GetAxis("Mouse Y") * rotationSpeed;
-       
-
-        transform.LookAt(target);
-        Rotate(mouseY, mouseX); 
+        if (Input.GetAxis("Mouse X") != 0 || Input.GetAxis("Mouse Y") !=0)
+        {
+            transform.LookAt(target);
+            Rotate(Input.GetAxis("Mouse Y") * rotationSpeed, Input.GetAxis("Mouse X") * rotationSpeed);
+        }
+        
     }
     void Rotate (float yAxis, float xAxis)
     {
-        target.rotation = Quaternion.Euler(yAxis, xAxis, 0);
+        mouseY -= yAxis;
+        mouseX += xAxis;
+
+        if (cameraXRotationMax != 0 && cameraXRotationMin != 0) { mouseX = Mathf.Clamp(mouseX, cameraXRotationMin, cameraXRotationMax); }
+        if (cameraYRotationMax != 0 && cameraYRotationMin != 0) { mouseY = Mathf.Clamp(mouseY, cameraYRotationMin, cameraYRotationMax); }
+        target.rotation = Quaternion.Euler(mouseY, mouseX, 0);
     }
+
+
 
     void ScrollInput()
     {
-        scroll += Input.mouseScrollDelta.y * scrollSpeed;          
-        scroll = Mathf.Clamp(scroll, maxScrollDistance, minScrollDistance);
-
-        Scroll(scroll);
+        if (Input.mouseScrollDelta.y != 0)
+        {
+            Scroll(Input.mouseScrollDelta.y * scrollSpeed);
+        }
     }
-
     void Scroll(float amountToScroll)
     {
-        transform.localPosition = new Vector3(0, 0, amountToScroll);
+        scroll += amountToScroll;
+        scroll = Mathf.Clamp(scroll, maxScrollDistance, minScrollDistance);
+        transform.localPosition = new Vector3(0, 0, scroll);
     }
-
     void ScrollToPosition(float zScrollPosition)
     {
+        if (zScrollPosition > 0) { zScrollPosition *= -1; }
+        Debug.Log("zScrollPosition: " + zScrollPosition);
         transform.localPosition = new Vector3(0, 0, zScrollPosition);
         scroll = zScrollPosition;
     }
-    void CapsuleCast()
+
+
+
+    void SphereCast()
     {
-        Debug.DrawLine(transform.position, target.position);
+        Vector3 heading = target.position - transform.position;
+        float distance = heading.magnitude;
+        Vector3 diraction = heading / distance;
+
+        Debug.DrawLine(transform.position, diraction);
         RaycastHit hit;
-        if (Physics.Raycast(transform.position,target.position, out hit))
+        if (Physics.SphereCast(transform.position,1, diraction, out hit,distance))
         {
-            Debug.DrawLine(transform.position, target.position);
-            Debug.Log(hit.transform);
-            ScrollToPosition(hit.transform.position.z);
+            for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+            {
+                if (hit.transform.tag == tagsYouCantCollideWith[i])
+                {
+                    Debug.Log(hit.transform);
+                    ScrollToPosition(hit.transform.position.z);
+                    return;
+                }
+            }     
         }
 
+    }
+
+
+
+
+
+    private void OnTriggerEnter(Collider other)
+    {
+
+        for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+        {
+            if (other.tag == tagsYouCantCollideWith[i])
+            {
+                moveOutOfCollision = true;
+                return;
+            }
+        }
+        for (int i = 0; i < tagToNotRenderOnCollision.Length; i++)
+        {
+            if (other.tag == "Enemy")
+            {
+                other.gameObject.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                return;
+            }
+        }
+        
+    }
+    private void OnTriggerExit(Collider other)
+    {
+
+        for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+        {
+            if (other.tag == tagsYouCantCollideWith[i])
+            {
+                moveOutOfCollision = false;
+                return;
+            }
+        }
+
+        for (int i = 0; i < tagToNotRenderOnCollision.Length; i++)
+        {
+            if (other.tag == "Enemy")
+            {
+                other.gameObject.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                return;
+            }
+        }
+    
     }
 }
