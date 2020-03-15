@@ -26,7 +26,21 @@ public class MainCamera : MonoBehaviour
     float scroll;
 
     bool moveOutOfCollision = false;
+
+
+    const string mouseXAxis = "Mouse X";
+    const string mouseYAxis = "Mouse Y";
+
    
+    bool collidingWithTagYouCantCollideWith; // Look....its early ok.
+     
+    float relativeLastZPosition = 0;
+    bool returnToPosition;
+
+
+
+    float amopuntToScrollForward = 0.05f;
+    float amopuntToScrollBackward = -0.05f;
     void Start()
     {
         scroll = transform.localPosition.z;
@@ -40,20 +54,28 @@ public class MainCamera : MonoBehaviour
     {
         RotationInput();
         ScrollInput();
-        SphereCast();
+        ForwardSphereCast();
+        
+        
 
         if (moveOutOfCollision)
         {
-            Scroll(0.05f);
+            relativeLastZPosition -= amopuntToScrollForward;
+            Scroll(amopuntToScrollForward);
+            Debug.Log("Moving Forward");
+            returnToPosition = true;
         }
+        ReturnToLastZPosition();
     }
+   
+
 
     void RotationInput()
     {
-        if (Input.GetAxis("Mouse X") != 0 || Input.GetAxis("Mouse Y") !=0)
+        if (Input.GetAxis(mouseXAxis) != 0 || Input.GetAxis(mouseYAxis) !=0)
         {
             transform.LookAt(target);
-            Rotate(Input.GetAxis("Mouse Y") * rotationSpeed, Input.GetAxis("Mouse X") * rotationSpeed);
+            Rotate(Input.GetAxis(mouseYAxis) * rotationSpeed, Input.GetAxis(mouseXAxis) * rotationSpeed);
         }
         
     }
@@ -73,7 +95,15 @@ public class MainCamera : MonoBehaviour
     {
         if (Input.mouseScrollDelta.y != 0)
         {
-            Scroll(Input.mouseScrollDelta.y * scrollSpeed);
+            if (CanScrollBack())
+            {
+                Scroll(Input.mouseScrollDelta.y * scrollSpeed);          
+            }
+            else if (Input.mouseScrollDelta.y > 0)
+            {
+                Scroll(Input.mouseScrollDelta.y * scrollSpeed);
+            }
+            
         }
     }
     void Scroll(float amountToScroll)
@@ -85,14 +115,36 @@ public class MainCamera : MonoBehaviour
     void ScrollToPosition(float zScrollPosition)
     {
         if (zScrollPosition > 0) { zScrollPosition *= -1; }
-        Debug.Log("zScrollPosition: " + zScrollPosition);
+        
         transform.localPosition = new Vector3(0, 0, zScrollPosition);
         scroll = zScrollPosition;
+        
     }
 
+    void ReturnToLastZPosition()
+    {
+        if (returnToPosition )
+        {
+            if (Input.mouseScrollDelta.y != 0)
+            {
+                returnToPosition = false;
+                relativeLastZPosition = 0;
+            }
+            else if (CanScrollBack())
+            {
+                Debug.Log("Moving Back");
+                Scroll(amopuntToScrollBackward);
+                relativeLastZPosition -= amopuntToScrollBackward;
+                if (relativeLastZPosition >= 0)
+                {
+                    relativeLastZPosition = 0;
+                    returnToPosition = false;
+                }
+            }
+        }    
+    }
 
-
-    void SphereCast()
+    void ForwardSphereCast()
     {
         Vector3 heading = target.position - transform.position;
         float distance = heading.magnitude;
@@ -100,24 +152,63 @@ public class MainCamera : MonoBehaviour
 
         Debug.DrawLine(transform.position, diraction);
         RaycastHit hit;
-        if (Physics.SphereCast(transform.position,1, diraction, out hit,distance))
+        if (Physics.Raycast(transform.position, diraction, out hit,distance))
         {
             for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
             {
                 if (hit.transform.tag == tagsYouCantCollideWith[i])
                 {
-                    Debug.Log(hit.transform);
+                   
+                    returnToPosition = true;
+                    relativeLastZPosition = transform.localPosition.z - hit.transform.position.z ;
+                    Debug.Log("transform.position.z: " + transform.localPosition.z);
+                    Debug.Log("hit.transform.position.z: " + hit.transform.position.z);
+                    Debug.Log("relativeLastZPosition: " + relativeLastZPosition);
                     ScrollToPosition(hit.transform.position.z);
                     return;
                 }
             }     
         }
+    }
 
+
+    bool BackwardsRayCast()
+    {
+        Vector3 heading = -transform.forward ;
+        float distance = 2f;
+        Vector3 diraction = heading / distance;
+        RaycastHit hit;
+        Vector3 origin = transform.position;
+        origin.z -= 1;
+
+        if (Physics.Raycast(origin,  diraction, out hit, distance))
+        {
+            for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+            {
+                if (hit.transform.tag == tagsYouCantCollideWith[i])
+                {
+                   
+                    
+                    return true;
+                }
+
+            }
+            
+        }
+        return false;  
     }
 
 
 
-
+    bool CanScrollBack()
+    {
+        if (collidingWithTagYouCantCollideWith || BackwardsRayCast())
+        {
+            Debug.Log("Can Not Scroll Back");
+            return false;
+        }
+        return true;
+    }
 
     private void OnTriggerEnter(Collider other)
     {
@@ -126,6 +217,7 @@ public class MainCamera : MonoBehaviour
         {
             if (other.tag == tagsYouCantCollideWith[i])
             {
+                collidingWithTagYouCantCollideWith = true;
                 moveOutOfCollision = true;
                 return;
             }
@@ -147,6 +239,7 @@ public class MainCamera : MonoBehaviour
         {
             if (other.tag == tagsYouCantCollideWith[i])
             {
+                collidingWithTagYouCantCollideWith = false;               
                 moveOutOfCollision = false;
                 return;
             }
