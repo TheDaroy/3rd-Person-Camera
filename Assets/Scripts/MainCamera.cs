@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class MainCamera : MonoBehaviour
 {
@@ -55,13 +53,10 @@ public class MainCamera : MonoBehaviour
         RotationInput();
         ScrollInput();
         ForwardSphereCast();
-
         MovingOutOfCollision();
         ReturnToLastZPosition();
     }
    
-
-
     void RotationInput()
     {
         if (Input.GetAxis(mouseXAxis) != 0 || Input.GetAxis(mouseYAxis) !=0)
