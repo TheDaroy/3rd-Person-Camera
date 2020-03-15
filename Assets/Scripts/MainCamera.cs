@@ -19,8 +19,10 @@ public class MainCamera : MonoBehaviour
     [SerializeField] float cameraYRotationMin = 0.0f;
 
     [Header("Arrays")]
-    public string[] tagToNotRenderOnCollision;
-    public string[] tagsYouCantCollideWith;
+    public int[] layerToNotRenderOnCollision;
+    public int[] layerYouCantCollideWith;
+
+
     float mouseX;
     float mouseY;
     float scroll;
@@ -32,15 +34,13 @@ public class MainCamera : MonoBehaviour
     const string mouseYAxis = "Mouse Y";
 
    
-    bool collidingWithTagYouCantCollideWith; // Look....its early ok.
+    bool collidingWithLayerYouCantCollideWith; // Look....its early.
      
     float relativeLastZPosition = 0;
     bool returnToPosition;
 
-
-
-    float amopuntToScrollForward = 0.05f;
-    float amopuntToScrollBackward = -0.05f;
+    float amopuntToScrollForward = 5.0f;
+    float amopuntToScrollBackward = -5.0f;
     void Start()
     {
         scroll = transform.localPosition.z;
@@ -55,16 +55,8 @@ public class MainCamera : MonoBehaviour
         RotationInput();
         ScrollInput();
         ForwardSphereCast();
-        
-        
 
-        if (moveOutOfCollision)
-        {
-            relativeLastZPosition -= amopuntToScrollForward;
-            Scroll(amopuntToScrollForward);
-            Debug.Log("Moving Forward");
-            returnToPosition = true;
-        }
+        MovingOutOfCollision();
         ReturnToLastZPosition();
     }
    
@@ -132,9 +124,9 @@ public class MainCamera : MonoBehaviour
             }
             else if (CanScrollBack())
             {
-                Debug.Log("Moving Back");
-                Scroll(amopuntToScrollBackward);
-                relativeLastZPosition -= amopuntToScrollBackward;
+                
+                Scroll(amopuntToScrollBackward * Time.deltaTime);
+                relativeLastZPosition -= amopuntToScrollBackward * Time.deltaTime;
                 if (relativeLastZPosition >= 0)
                 {
                     relativeLastZPosition = 0;
@@ -154,16 +146,12 @@ public class MainCamera : MonoBehaviour
         RaycastHit hit;
         if (Physics.Raycast(transform.position, diraction, out hit,distance))
         {
-            for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+            for (int i = 0; i < layerYouCantCollideWith.Length; i++)
             {
-                if (hit.transform.tag == tagsYouCantCollideWith[i])
-                {
-                   
+                if (hit.transform.gameObject.layer == layerYouCantCollideWith[i])
+                {              
                     returnToPosition = true;
                     relativeLastZPosition = transform.localPosition.z - hit.transform.position.z ;
-                    Debug.Log("transform.position.z: " + transform.localPosition.z);
-                    Debug.Log("hit.transform.position.z: " + hit.transform.position.z);
-                    Debug.Log("relativeLastZPosition: " + relativeLastZPosition);
                     ScrollToPosition(hit.transform.position.z);
                     return;
                 }
@@ -183,26 +171,32 @@ public class MainCamera : MonoBehaviour
 
         if (Physics.Raycast(origin,  diraction, out hit, distance))
         {
-            for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+            for (int i = 0; i < layerYouCantCollideWith.Length; i++)
             {
-                if (hit.transform.tag == tagsYouCantCollideWith[i])
-                {
-                   
-                    
+                if (hit.transform.gameObject.layer == layerYouCantCollideWith[i])
+                {   
                     return true;
                 }
-
-            }
-            
+            }        
         }
         return false;  
     }
 
+    void MovingOutOfCollision()
+    {
+        if (moveOutOfCollision)
+        {
+            relativeLastZPosition -= amopuntToScrollForward * Time.deltaTime;
+            Scroll(amopuntToScrollForward * Time.deltaTime);
+            Debug.Log("Moving Forward");
+            returnToPosition = true;
+        }
+    }
 
 
     bool CanScrollBack()
     {
-        if (collidingWithTagYouCantCollideWith || BackwardsRayCast())
+        if (collidingWithLayerYouCantCollideWith || BackwardsRayCast())
         {
             Debug.Log("Can Not Scroll Back");
             return false;
@@ -213,18 +207,18 @@ public class MainCamera : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
 
-        for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+        for (int i = 0; i < layerYouCantCollideWith.Length; i++)
         {
-            if (other.tag == tagsYouCantCollideWith[i])
+            if (other.gameObject.layer == layerYouCantCollideWith[i])
             {
-                collidingWithTagYouCantCollideWith = true;
+                collidingWithLayerYouCantCollideWith = true;
                 moveOutOfCollision = true;
                 return;
             }
         }
-        for (int i = 0; i < tagToNotRenderOnCollision.Length; i++)
+        for (int i = 0; i < layerToNotRenderOnCollision.Length; i++)
         {
-            if (other.tag == "Enemy")
+            if (other.gameObject.layer == layerToNotRenderOnCollision[i])
             {
                 other.gameObject.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
                 return;
@@ -235,19 +229,19 @@ public class MainCamera : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
 
-        for (int i = 0; i < tagsYouCantCollideWith.Length; i++)
+        for (int i = 0; i < layerYouCantCollideWith.Length; i++)
         {
-            if (other.tag == tagsYouCantCollideWith[i])
+            if (other.gameObject.layer == layerYouCantCollideWith[i])
             {
-                collidingWithTagYouCantCollideWith = false;               
+                collidingWithLayerYouCantCollideWith = false;               
                 moveOutOfCollision = false;
                 return;
             }
         }
 
-        for (int i = 0; i < tagToNotRenderOnCollision.Length; i++)
+        for (int i = 0; i < layerToNotRenderOnCollision.Length; i++)
         {
-            if (other.tag == "Enemy")
+            if (other.gameObject.layer == layerToNotRenderOnCollision[i])
             {
                 other.gameObject.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 return;
